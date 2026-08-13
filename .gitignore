@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pth
+
+# downloaded dataset (kagglehub cache, see scripts/download_dataset.py)
+data/
+
+# training outputs: checkpoints, per-epoch history, experiment_summary.csv
+outputs/

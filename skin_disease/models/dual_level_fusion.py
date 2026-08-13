@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import timm
 
 
-class DualScaleFusionHead(nn.Module):
+class DualLevelFusionHead(nn.Module):
     def __init__(self, c4_channels, c5_channels, fusion_channels=512):
         super().__init__()
         self.c4_proj = nn.Sequential(
@@ -32,7 +32,7 @@ class DualScaleFusionHead(nn.Module):
         return x
 
 
-class EfficientNetB2DualScale(nn.Module):
+class EfficientNetB2DualLevel(nn.Module):
     def __init__(self, num_classes, pretrained=True, drop_rate=0.0, fusion_channels=512):
         super().__init__()
         self.num_classes = num_classes
@@ -57,7 +57,7 @@ class EfficientNetB2DualScale(nn.Module):
         c4_channels = c4.shape[1]
         c5_channels = c5.shape[1]
 
-        self.fusion_head = DualScaleFusionHead(
+        self.fusion_head = DualLevelFusionHead(
             c4_channels=c4_channels,
             c5_channels=c5_channels,
             fusion_channels=fusion_channels
@@ -95,7 +95,7 @@ class EfficientNetB2DualScale(nn.Module):
                 c5 = x
 
         return c4, c5
-    
+
     def _infer_channels(self, x):
         x = self.backbone.conv_stem(x)
         x = self.backbone.bn1(x)
@@ -213,8 +213,8 @@ def efficientnet_b2_original(num_classes, pretrained=True, drop_rate=0.0):
     )
 
 
-def efficientnet_b2_dual_scale(num_classes, pretrained=True, drop_rate=0.0, fusion_channels=512):
-    return EfficientNetB2DualScale(
+def efficientnet_b2_dual_level(num_classes, pretrained=True, drop_rate=0.0, fusion_channels=512):
+    return EfficientNetB2DualLevel(
         num_classes=num_classes,
         pretrained=pretrained,
         drop_rate=drop_rate,
