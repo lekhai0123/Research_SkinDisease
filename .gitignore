@@ -7,3 +7,6 @@ data/
 
 # training outputs: checkpoints, per-epoch history, experiment_summary.csv
 outputs/
+
+# personal experiment notebooks (Kaggle scratch space, not part of the official code)
+notebooks/

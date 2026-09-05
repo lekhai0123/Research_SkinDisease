@@ -24,12 +24,27 @@ def parse_args():
     parser.add_argument("--num-workers", type=int, default=config.DEFAULT_NUM_WORKERS)
     parser.add_argument("--epochs", type=int, default=config.DEFAULT_EPOCHS)
 
+    parser.add_argument("--data-mode", choices=["dev", "final"], default="final",
+                         help="'dev' carves a 70/10/20 validation split for hyperparameter search "
+                              "(selection uses --select-metric on the val split only); "
+                              "'final' freezes hyperparameters and trains on the full 80/20 split "
+                              "with no checkpoint selection (final-epoch weights are evaluated once).")
+    parser.add_argument("--val-fraction", type=float, default=0.125,
+                         help="dev mode only: fraction of the 80%% train partition held out as validation "
+                              "(0.125 of 80%% = 10%% of the whole dataset, giving 70/10/20).")
+    parser.add_argument("--select-metric", choices=["val_acc", "val_balanced_acc", "val_macro_f1"], default="val_acc",
+                         help="dev mode only: validation metric used to pick the best checkpoint.")
+    parser.add_argument("--no-log-test-each-epoch", action="store_true",
+                         help="final mode only: skip evaluating the test set every epoch (it is still "
+                              "evaluated once at the end). By default it IS logged each epoch for "
+                              "transparency, but never used to select a checkpoint.")
+
     parser.add_argument("--model-name", choices=["efficientnet_b2", "efficientnet_b0"], default="efficientnet_b2")
     parser.add_argument("--model-variant", choices=["original", "dual_level"], default="original")
     parser.add_argument("--fusion-channels", type=int, default=512)
     parser.add_argument("--drop-rate", type=float, default=0.0)
 
-    parser.add_argument("--optimizer", choices=["adam", "adamw"], default="adam")
+    parser.add_argument("--optimizer", choices=["adam", "adamw"], default="adamw")
     parser.add_argument("--scheduler", choices=["none", "cosine"], default="cosine")
     parser.add_argument("--lr", type=float, default=config.DEFAULT_LR)
     parser.add_argument("--weight-decay", type=float, default=config.DEFAULT_WEIGHT_DECAY)
@@ -45,6 +60,9 @@ def parse_args():
 
     parser.add_argument("--use-kd", action="store_true")
     parser.add_argument("--kd-teacher-checkpoint", type=Path, default=None)
+    parser.add_argument("--kd-teacher-variant", choices=["original", "dual_level"], default="dual_level",
+                         help="Architecture of the frozen teacher checkpoint. Use 'original' for the "
+                              "non-fusion control-arm ablation, 'dual_level' for the proposed fusion teacher.")
     parser.add_argument("--kd-teacher-fusion-channels", type=int, default=512)
     parser.add_argument("--kd-alpha", type=float, default=0.7)
     parser.add_argument("--kd-temperature", type=float, default=4.0)
@@ -76,6 +94,9 @@ def main():
         img_size=args.img_size,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        data_mode=args.data_mode,
+        val_fraction=args.val_fraction,
+        seed=args.seed,
     )
     save_class_meta(
         args.work_dir / "class_names_skin31.json",
@@ -89,11 +110,16 @@ def main():
         model_name=args.model_name,
         model_variant=args.model_variant,
         num_classes=data.num_classes,
+        class_names=data.class_names,
         train_loader=data.train_loader,
+        val_loader=data.val_loader,
         test_loader=data.test_loader,
         device=device,
         work_dir=args.work_dir,
         history_dir=args.work_dir / "histories",
+        data_mode=args.data_mode,
+        select_metric=args.select_metric,
+        log_test_each_epoch=not args.no_log_test_each_epoch,
         epochs=args.epochs,
         optimizer_name=args.optimizer,
         scheduler_name=args.scheduler,
@@ -109,6 +135,7 @@ def main():
         fusion_channels=args.fusion_channels,
         use_kd=args.use_kd,
         kd_teacher_path=args.kd_teacher_checkpoint,
+        kd_teacher_variant=args.kd_teacher_variant,
         kd_teacher_fusion_channels=args.kd_teacher_fusion_channels,
         kd_alpha=args.kd_alpha,
         kd_temperature=args.kd_temperature,

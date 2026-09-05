@@ -6,3 +6,4 @@ pandas
 pillow
 tqdm
 kagglehub
+scikit-learn
